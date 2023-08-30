@@ -21,23 +21,33 @@ export function decryptWithECIES(
 export async function decryptWithGCM(
     encryptedPrivateKey: Uint8Array,
     signingPassword: string,
-    salt: string
+    salt: Uint8Array,
+    iv: Uint8Array,
 ) {
-    const saltedPassword = new TextEncoder().encode(signingPassword + salt);
-    const hashedPassword = await crypto.subtle.digest("SHA-256", saltedPassword);
-    const [key, iv] = await Promise.all([
-        crypto.subtle.importKey("raw", hashedPassword, "AES-GCM", false, [
-            "decrypt",
-        ]),
-        crypto.subtle
-            .digest("SHA-1", hashedPassword)
-            .then((buffer) => buffer.slice(0, 12)),
-    ]);
+    const pbkdf2InputRaw = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(signingPassword),
+        {name: "PBKDF2"},
+        false,
+        ["deriveKey"]
+    );
+    const aesKey = await crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            hash: {name: "SHA-256"},
+            iterations: 600000,
+            salt: salt
+        },
+        pbkdf2InputRaw,
+        {name: "AES-GCM", length: 256},
+        false,
+        ["decrypt"]
+    )
     return new Uint8Array(
         await crypto.subtle.decrypt(
             {name: "AES-GCM", iv},
-            key,
-            Buffer.from(encryptedPrivateKey)
+            aesKey,
+            encryptedPrivateKey
         )
     );
 }

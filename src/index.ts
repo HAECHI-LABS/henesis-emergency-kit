@@ -21,23 +21,26 @@ async function main() {
 
     const withdrawTokenAddress = reader.question(`출금할 토큰의 주소를 입력해주세요 (네이티브의 경우 0x0000000000000000000000000000000000000000) : `)
 
-
     const privateKeyList: string[] = [];
     for (let i = 1; i <= threshold; i++) {
-        const encryptedPk = reader.question(`${i} 번째 비상키트의 암호화된 서명 비밀번호를 입력해주세요 : `)
-        const salt = reader.question(`${i} 번째 비상키트의 솔트를 입력해주세요 : `)
+        const jsonData = JSON.parse(reader.question(`${i} 번째 비상키트의 암호화된 서명 키를 입력해주세요 ( {} 포함해서 전체 ) : `))
+        const iv = jsonData.iv
+        const encryptedPk = jsonData.encryptedSigningPrivateKey
+        const salt = jsonData.salt
         const signingPassword = reader.question(`${i} 번째 비상키트의 서명 비밀번호를 입력해주세요 : `)
         try {
             let decryptedPrivateKey = await decryptWithGCM(
                 new Uint8Array(Buffer.from(encryptedPk, 'hex')),
                 signingPassword,
-                salt
+                Buffer.from(salt, 'hex'),
+                Buffer.from(iv, 'hex')
             );
             let hexPk = Buffer.from(decryptedPrivateKey).toString('hex');
             if (hexPk.length != 64) {
                 throw new Error("복구된 pk가 잘못되었습니다. 비상키트의 암호화된 서명비밀번호, 솔트, 서명비밀번호를 확인해주세요.")
             }
             privateKeyList.push(hexPk)
+            console.log(hexPk)
         } catch (e) {
             throw new Error(`PK를 복구할 수 없습니다. 에러 : ${e}`)
         }
@@ -55,7 +58,6 @@ async function main() {
         to = withdrawTokenAddress;
 
     }
-
     const txParams = [
         to,
         value, // value
