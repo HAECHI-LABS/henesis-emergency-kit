@@ -1,0 +1,12 @@
+{
+  "include": [
+    "src/**/*"
+  ],
+  "compilerOptions": {
+    "outDir": "build",
+    "esModuleInterop": true,
+    "target": "ES3",
+    "strict": true,
+    "allowJs": true,
+  }
+}
